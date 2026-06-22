@@ -1,1 +1,1 @@
-# AI-assisted-Interview-Preparation-using-agenticai-and-rag
+# AI-assisted-Interview-Preparation-using-agenticAI-and-rag
