@@ -1,1 +1,9 @@
-
+fastapi
+uvicorn
+requests
+pydantic
+langchain
+langchain-community
+langchain-chroma
+chromadb
+pypdf
