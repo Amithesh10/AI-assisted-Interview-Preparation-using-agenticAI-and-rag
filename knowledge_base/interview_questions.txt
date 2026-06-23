@@ -1,0 +1,10 @@
+Common HR interview questions:
+1. Tell me about yourself.
+2. Why should we hire you?
+3. What are your strengths and weaknesses?
+4. Where do you see yourself in 5 years?
+5. Explain a challenging situation you handled.
+
+For technical interviews, candidates should prepare role-specific questions based on the job description.
+
+For data roles, important topics include SQL, Power BI, Python, Machine Learning, data cleaning, dashboards, and business insights.

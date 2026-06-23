@@ -1,0 +1,27 @@
+Machine Learning topics:
+- Supervised Learning
+- Unsupervised Learning
+- Regression
+- Classification
+- Overfitting
+- Underfitting
+- Train-test split
+- Model evaluation metrics
+
+Power BI topics:
+- Data modeling
+- DAX
+- Measures
+- Calculated columns
+- Relationships
+- Power Query
+- Dashboards
+- KPIs
+
+Generative AI topics:
+- LLM
+- Prompt Engineering
+- RAG
+- Embeddings
+- Vector Database
+- Agentic AI
