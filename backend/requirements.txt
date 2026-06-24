@@ -2,9 +2,5 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
-google-generativeai
-langchain
-langchain-community
-langchain-chroma
-langchain-google-genai
-chromadb
+python-multipart
+groq
