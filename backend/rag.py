@@ -1,12 +1,13 @@
 import os
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VECTOR_DIR = os.path.join(BASE_DIR, "vectordb")
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+    google_api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 vectordb = Chroma(
@@ -14,9 +15,7 @@ vectordb = Chroma(
     embedding_function=embeddings
 )
 
-retriever = vectordb.as_retriever(
-    search_kwargs={"k": 4}
-)
+retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
 def retrieve_context(query: str) -> str:
     try:
@@ -25,7 +24,7 @@ def retrieve_context(query: str) -> str:
         if not docs:
             return "No relevant knowledge found."
 
-        return "\n\n".join([doc.page_content for doc in docs])
+        return "\n\n".join(doc.page_content for doc in docs)
 
     except Exception as e:
         return f"RAG retrieval error: {str(e)}"
