@@ -2,8 +2,11 @@ fastapi
 uvicorn
 requests
 pydantic
+python-dotenv
+google-generativeai
 langchain
 langchain-community
 langchain-chroma
 chromadb
+sentence-transformers
 pypdf
