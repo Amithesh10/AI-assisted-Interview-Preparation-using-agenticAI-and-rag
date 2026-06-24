@@ -10,7 +10,7 @@ from docx import Document
 API_URL = "https://ai-assisted-interview-preparation-using.onrender.com"
 
 st.set_page_config(
-    page_title="AI Interview Prep",
+    page_title="AI Interview Preparation",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
