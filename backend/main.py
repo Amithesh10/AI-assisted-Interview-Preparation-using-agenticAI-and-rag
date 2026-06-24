@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import requests
+import os
+import google.generativeai as genai
 from agents import AGENTS
 from rag import retrieve_context
 
 app = FastAPI()
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL_NAME = "llama3.2:1b"
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+MODEL_NAME = "gemini-1.5-flash"
 
 class AgentRequest(BaseModel):
     agent: str
@@ -27,29 +29,17 @@ class ReportRequest(BaseModel):
     company_info: str = ""
     outputs: dict
 
-def call_ollama(system_prompt, messages):
-    payload = {
-        "model": MODEL_NAME,
-        "stream": False,
-        "messages": [
-            {
-                "role": "system",
-                "content": system_prompt
-            }
-        ] + messages
-    }
-
-    response = requests.post(
-        OLLAMA_URL,
-        json=payload,
-        timeout=180
+def call_llm(system_prompt, messages):
+    model = genai.GenerativeModel(
+        model_name=MODEL_NAME,
+        system_instruction=system_prompt
     )
 
-    response.raise_for_status()
+    prompt = "\n\n".join([m["content"] for m in messages])
 
-    data = response.json()
+    response = model.generate_content(prompt)
 
-    return data["message"]["content"]
+    return response.text
 
 def build_query(resume, job_desc, company_info):
     return f"""
@@ -72,16 +62,9 @@ def home():
 @app.post("/run-agent")
 def run_agent(req: AgentRequest):
     if req.agent not in AGENTS:
-        return {
-            "result": "Invalid agent selected."
-        }
+        return {"result": "Invalid agent selected."}
 
-    query = build_query(
-        req.resume,
-        req.job_desc,
-        req.company_info
-    )
-
+    query = build_query(req.resume, req.job_desc, req.company_info)
     rag_context = retrieve_context(query)
 
     user_prompt = f"""
@@ -100,14 +83,9 @@ Retrieved RAG Knowledge:
 Now perform the task for the selected agent.
 """
 
-    result = call_ollama(
+    result = call_llm(
         AGENTS[req.agent]["system_prompt"],
-        [
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
+        [{"role": "user", "content": user_prompt}]
     )
 
     return {
@@ -118,12 +96,7 @@ Now perform the task for the selected agent.
 
 @app.post("/mock-chat")
 def mock_chat(req: MockRequest):
-    query = build_query(
-        req.resume,
-        req.job_desc,
-        req.company_info
-    )
-
+    query = build_query(req.resume, req.job_desc, req.company_info)
     rag_context = retrieve_context(query)
 
     system_prompt = f"""
@@ -142,23 +115,13 @@ Retrieved RAG Knowledge:
 {rag_context}
 """
 
-    result = call_ollama(
-        system_prompt,
-        req.messages
-    )
+    result = call_llm(system_prompt, req.messages)
 
-    return {
-        "reply": result
-    }
+    return {"reply": result}
 
 @app.post("/generate-report")
 def generate_report(req: ReportRequest):
-    query = build_query(
-        req.resume,
-        req.job_desc,
-        req.company_info
-    )
-
+    query = build_query(req.resume, req.job_desc, req.company_info)
     rag_context = retrieve_context(query)
 
     agent_outputs = "\n\n".join(
@@ -201,16 +164,9 @@ Agent Outputs:
 Generate final report.
 """
 
-    result = call_ollama(
+    result = call_llm(
         system_prompt,
-        [
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
+        [{"role": "user", "content": user_prompt}]
     )
 
-    return {
-        "report": result
-    }
+    return {"report": result}
