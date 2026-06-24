@@ -3,10 +3,10 @@ import requests
 from pypdf import PdfReader
 from docx import Document
 
-# For local testing
+# For local testing:
 # API_URL = "http://127.0.0.1:8000"
 
-# For deployment, replace with your Render backend URL:
+# Deployment backend URL:
 API_URL = "https://ai-assisted-interview-preparation-using.onrender.com"
 
 st.set_page_config(
@@ -25,6 +25,13 @@ html, body, [data-testid="stAppViewContainer"] {
 
 [data-testid="stSidebar"] {
     background: #0A1520 !important;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-left: 4rem;
+    padding-right: 4rem;
+    max-width: 1400px;
 }
 
 .hero-header {
@@ -62,6 +69,7 @@ html, body, [data-testid="stAppViewContainer"] {
 .hero-sub {
     color: #94A3B8;
     font-size: 0.95rem;
+    line-height: 1.6;
 }
 
 .input-card {
@@ -90,6 +98,7 @@ html, body, [data-testid="stAppViewContainer"] {
     color: #CBD5E1;
     line-height: 1.7;
     margin-top: 16px;
+    overflow-x: auto;
 }
 
 .stButton > button {
@@ -115,8 +124,140 @@ h1, h2, h3 {
     color: #94A3B8;
     margin-bottom: 20px;
 }
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .block-container {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    .hero-header {
+        padding: 28px 26px 24px;
+    }
+
+    .hero-title {
+        font-size: 1.8rem;
+    }
+
+    .hero-sub {
+        font-size: 0.9rem;
+    }
+
+    .input-card {
+        padding: 16px;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab"] {
+        font-size: 0.78rem !important;
+        padding: 8px 10px !important;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-top: 1rem;
+    }
+
+    .hero-header {
+        padding: 24px 18px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    .hero-badge {
+        font-size: 0.62rem;
+        padding: 4px 10px;
+        letter-spacing: 0.08em;
+    }
+
+    .hero-title {
+        font-size: 1.55rem;
+        line-height: 1.25;
+    }
+
+    .hero-sub {
+        font-size: 0.82rem;
+        line-height: 1.6;
+    }
+
+    .input-card {
+        padding: 14px;
+        border-radius: 10px;
+    }
+
+    .input-label {
+        font-size: 0.68rem;
+    }
+
+    .stTextArea textarea {
+        font-size: 0.82rem !important;
+    }
+
+    .stButton > button {
+        font-size: 0.82rem !important;
+        padding: 9px 14px !important;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab"] {
+        min-width: max-content !important;
+        font-size: 0.74rem !important;
+        padding: 8px 10px !important;
+    }
+
+    .tab-heading {
+        font-size: 0.95rem;
+    }
+
+    .tab-desc {
+        font-size: 0.78rem;
+    }
+
+    .result-card {
+        padding: 14px;
+        font-size: 0.82rem;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .block-container {
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+    }
+
+    .hero-title {
+        font-size: 1.35rem;
+    }
+
+    .hero-sub {
+        font-size: 0.78rem;
+    }
+
+    .hero-header {
+        padding: 20px 14px;
+    }
+
+    .input-card {
+        padding: 12px;
+    }
+
+    .result-card {
+        font-size: 0.78rem;
+        line-height: 1.6;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 if "outputs" not in st.session_state:
     st.session_state.outputs = {}
@@ -172,7 +313,7 @@ def safe_post(endpoint, payload):
             return None
 
     except requests.exceptions.ConnectionError:
-        st.error("Cannot connect to backend. Make sure FastAPI is running.")
+        st.error("Cannot connect to backend. Make sure FastAPI backend is running.")
         st.code(f"Current API_URL = {API_URL}")
         return None
 
@@ -245,6 +386,7 @@ with st.sidebar:
 
     completed = len(st.session_state.outputs)
     total = 5
+
     st.write(f"Sections completed: **{completed}/{total}**")
     st.progress(completed / total)
 
@@ -291,6 +433,7 @@ with col1:
             key="resume_upload"
         )
         resume = extract_text_from_file(uploaded_resume) if uploaded_resume else ""
+
         if uploaded_resume:
             st.success("Resume loaded")
 
@@ -320,6 +463,7 @@ with col2:
             key="jd_upload"
         )
         job_desc = extract_text_from_file(uploaded_jd) if uploaded_jd else ""
+
         if uploaded_jd:
             st.success("Job description loaded")
 
@@ -348,6 +492,7 @@ else:
         key="company_upload"
     )
     company_info = extract_text_from_file(uploaded_company) if uploaded_company else ""
+
     if uploaded_company:
         st.success("Company information loaded")
 
