@@ -1,30 +1,17 @@
-import os
-from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+def retrieve_context(query, knowledge_text, top_k=4):
+    """
+    Lightweight RAG-style context retrieval.
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VECTOR_DIR = os.path.join(BASE_DIR, "vectordb")
+    Since Groq does not provide embeddings directly here,
+    we pass the uploaded/typewritten knowledge base content
+    directly to the LLM as context.
 
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001",
-    google_api_key=os.getenv("GOOGLE_API_KEY")
-)
+    This avoids Gemini quota issues and works well for deployment.
+    """
 
-vectordb = Chroma(
-    persist_directory=VECTOR_DIR,
-    embedding_function=embeddings
-)
+    if not knowledge_text or not str(knowledge_text).strip():
+        return "No knowledge base provided."
 
-retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+    knowledge_text = str(knowledge_text).strip()
 
-def retrieve_context(query: str) -> str:
-    try:
-        docs = retriever.invoke(query)
-
-        if not docs:
-            return "No relevant knowledge found."
-
-        return "\n\n".join(doc.page_content for doc in docs)
-
-    except Exception as e:
-        return f"RAG retrieval error: {str(e)}"
+    return knowledge_text[:4000]
