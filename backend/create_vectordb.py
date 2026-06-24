@@ -1,8 +1,8 @@
 import os
-from langchain_community.document_loaders import TextLoader, PyPDFLoader
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge_base")
@@ -17,19 +17,16 @@ for file_name in os.listdir(KNOWLEDGE_DIR):
         loader = TextLoader(file_path, encoding="utf-8")
         documents.extend(loader.load())
 
-    elif file_name.endswith(".pdf"):
-        loader = PyPDFLoader(file_path)
-        documents.extend(loader.load())
-
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=800,
-    chunk_overlap=150
+    chunk_size=600,
+    chunk_overlap=100
 )
 
 chunks = splitter.split_documents(documents)
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+    google_api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 vectordb = Chroma.from_documents(
@@ -38,5 +35,5 @@ vectordb = Chroma.from_documents(
     persist_directory=VECTOR_DIR
 )
 
-print("Vector Database Created Successfully")
-print(f"Total Chunks: {len(chunks)}")
+print("Vector database created successfully.")
+print("Total chunks:", len(chunks))
