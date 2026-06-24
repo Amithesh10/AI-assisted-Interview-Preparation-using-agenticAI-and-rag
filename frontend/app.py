@@ -1,90 +1,119 @@
 import streamlit as st
 import requests
+from pypdf import PdfReader
+from docx import Document
 
-API_URL = "https://ai-assisted-interview-preparation-using.onrender.com/"
+# For local testing
+# API_URL = "http://127.0.0.1:8000"
+
+# For deployment, replace with your Render backend URL:
+API_URL = "https://your-render-backend-url.onrender.com"
 
 st.set_page_config(
     page_title="AI Interview Prep",
     page_icon="🎯",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-.block-container {
-    max-width: 1180px;
-    padding-top: 2rem;
+html, body, [data-testid="stAppViewContainer"] {
+    background: #0D1B2A !important;
+    font-family: 'Inter', sans-serif;
 }
 
-h1 {
-    font-size: 32px !important;
-    font-weight: 800 !important;
+[data-testid="stSidebar"] {
+    background: #0A1520 !important;
 }
 
-h2, h3 {
-    font-size: 22px !important;
-    font-weight: 700 !important;
+.hero-header {
+    background: linear-gradient(135deg, #0D1B2A 0%, #0F2744 50%, #0D1B2A 100%);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 16px;
+    padding: 36px 40px 28px;
+    margin-bottom: 28px;
 }
 
-p, label, div, span {
-    font-size: 15px !important;
+.hero-badge {
+    display: inline-block;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #60A5FA;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 14px;
 }
 
-textarea {
-    font-size: 14px !important;
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #F8FAFC;
+    margin: 0 0 8px;
 }
 
-.stButton button {
-    width: 100%;
-    height: 44px;
-    border-radius: 10px;
-    font-size: 15px !important;
+.hero-title span {
+    color: #60A5FA;
+}
+
+.hero-sub {
+    color: #94A3B8;
+    font-size: 0.95rem;
+}
+
+.input-card {
+    background: #0F2236;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 14px;
+}
+
+.input-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #60A5FA;
+    margin-bottom: 10px;
     font-weight: 700;
 }
 
-.agent-card {
-    min-height: 135px;
-    padding: 18px;
-    border-radius: 14px;
-    border: 1px solid #3A3F4B;
-    background: #171B24;
+.result-card {
+    background: #0A1520;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-left: 4px solid #10B981;
+    border-radius: 10px;
+    padding: 20px;
+    color: #CBD5E1;
+    line-height: 1.7;
+    margin-top: 16px;
+}
+
+.stButton > button {
+    background: linear-gradient(135deg, #1D4ED8, #2563EB) !important;
+    color: white !important;
+    border-radius: 8px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    width: 100%;
+}
+
+h1, h2, h3 {
+    color: #F8FAFC !important;
+}
+
+.tab-heading {
+    font-size: 1.1rem;
+    font-weight: 700;
     color: #F8FAFC;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.25);
 }
 
-.agent-title {
-    font-size: 17px !important;
-    font-weight: 800;
-    margin-bottom: 8px;
-    color: #FFFFFF;
-}
-
-.agent-desc {
-    font-size: 14px !important;
-    color: #CBD5E1;
-    line-height: 1.5;
-}
-
-.info-box {
-    padding: 15px 18px;
-    border-radius: 12px;
-    background: #172554;
-    border: 1px solid #2563EB;
-    color: #DBEAFE;
-    margin-bottom: 18px;
-}
-
-.small-text {
-    font-size: 14px !important;
-    color: #CBD5E1;
-}
-
-.section-title {
-    font-size: 22px !important;
-    font-weight: 800;
-    margin-top: 12px;
-    margin-bottom: 16px;
-    color: #FFFFFF;
+.tab-desc {
+    color: #94A3B8;
+    margin-bottom: 20px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -92,253 +121,381 @@ textarea {
 if "outputs" not in st.session_state:
     st.session_state.outputs = {}
 
-if "mock_messages" not in st.session_state:
-    st.session_state.mock_messages = []
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
 
-if "final_report" not in st.session_state:
-    st.session_state.final_report = ""
 
-def safe_api_post(endpoint, payload):
+def extract_text_from_file(uploaded_file):
+    if uploaded_file is None:
+        return ""
+
+    name = uploaded_file.name.lower()
+
+    try:
+        if name.endswith(".txt"):
+            return uploaded_file.read().decode("utf-8", errors="ignore")
+
+        if name.endswith(".pdf"):
+            reader = PdfReader(uploaded_file)
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+        if name.endswith(".docx"):
+            doc = Document(uploaded_file)
+            return "\n".join(p.text for p in doc.paragraphs)
+
+    except Exception as e:
+        st.error("File reading failed.")
+        st.code(str(e))
+        return ""
+
+    return ""
+
+
+def safe_post(endpoint, payload):
     try:
         response = requests.post(
             f"{API_URL}{endpoint}",
             json=payload,
-            timeout=180
+            timeout=120
         )
 
         if response.status_code != 200:
-            return False, f"Backend Error {response.status_code}:\n\n{response.text}"
+            st.error(f"Backend error: {response.status_code}")
+            st.code(response.text)
+            return None
 
-        return True, response.json()
+        try:
+            return response.json()
+        except requests.exceptions.JSONDecodeError:
+            st.error("Backend returned non-JSON response.")
+            st.code(response.text)
+            return None
 
     except requests.exceptions.ConnectionError:
-        return False, "FastAPI backend is not running. Start it using: uvicorn main:app --reload"
+        st.error("Cannot connect to backend. Make sure FastAPI is running.")
+        st.code(f"Current API_URL = {API_URL}")
+        return None
 
     except requests.exceptions.Timeout:
-        return False, "Request timed out. Ollama may be slow. Try again."
+        st.error("Backend request timed out. Try again.")
+        return None
 
     except Exception as e:
-        return False, f"Error: {str(e)}"
+        st.error("Unexpected frontend error.")
+        st.code(str(e))
+        return None
 
-def run_agent(agent_key, resume, job_desc, company_info):
+
+def run_agent(agent_name, resume, job_desc, company_info, knowledge_text):
     payload = {
-        "agent": agent_key,
-        "resume": resume,
-        "job_desc": job_desc,
-        "company_info": company_info
-    }
-
-    success, data = safe_api_post("/run-agent", payload)
-
-    if not success:
-        return data
-
-    result = data.get("result", "")
-
-    if not result.strip():
-        return "Agent returned blank output."
-
-    return result
-
-st.title("🎯 AI Interview Prep")
-st.markdown(
-    "<p class='small-text'>Agentic AI + RAG based interview preparation system using Streamlit, FastAPI, Ollama, LangChain, and ChromaDB.</p>",
-    unsafe_allow_html=True
-)
-
-st.divider()
-
-st.markdown("<div class='section-title'>1. Candidate & Role Details</div>", unsafe_allow_html=True)
-
-left, right = st.columns([1.15, 1])
-
-with left:
-    resume = st.text_area(
-        "Resume / CV",
-        height=240,
-        placeholder="Paste your resume text here..."
-    )
-
-with right:
-    job_desc = st.text_area(
-        "Job Description",
-        height=155,
-        placeholder="Paste job description here..."
-    )
-
-    company_info = st.text_area(
-        "Company Info Optional",
-        height=95,
-        placeholder="Company name, domain, culture, role details..."
-    )
-
-can_continue = len(resume.strip()) > 50 and len(job_desc.strip()) > 20
-
-if not can_continue:
-    st.markdown(
-        "<div class='info-box'>Paste your resume and job description to enable the agents.</div>",
-        unsafe_allow_html=True
-    )
-
-st.divider()
-
-st.markdown("<div class='section-title'>2. Interview Preparation Agents</div>", unsafe_allow_html=True)
-
-agents = {
-    "resume": {
-        "title": "Resume Agent",
-        "desc": "Analyzes resume strengths, skill gaps, ATS score, and improvements."
-    },
-    "hr": {
-        "title": "HR Agent",
-        "desc": "Generates HR questions, STAR answers, and communication tips."
-    },
-    "technical": {
-        "title": "Technical Agent",
-        "desc": "Creates role-based technical questions, answers, and follow-ups."
-    },
-    "mock": {
-        "title": "Mock Interview",
-        "desc": "Conducts a live mock interview with scoring and feedback."
-    }
-}
-
-cols = st.columns(4)
-
-for index, key in enumerate(agents):
-    with cols[index]:
-        st.markdown(
-            f"""
-            <div class="agent-card">
-                <div class="agent-title">{agents[key]["title"]}</div>
-                <div class="agent-desc">{agents[key]["desc"]}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        if st.button(f"Run {agents[key]['title']}", disabled=not can_continue, key=f"run_{key}"):
-
-            if key == "mock":
-                if len(st.session_state.mock_messages) == 0:
-                    payload = {
-                        "resume": resume,
-                        "job_desc": job_desc,
-                        "company_info": company_info,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": "Start the mock interview. Greet me and ask the first question."
-                            }
-                        ]
-                    }
-
-                    with st.spinner("Starting mock interview..."):
-                        success, data = safe_api_post("/mock-chat", payload)
-
-                    if success:
-                        reply = data.get("reply", "")
-                        if reply.strip():
-                            st.session_state.mock_messages.append(
-                                {
-                                    "role": "assistant",
-                                    "content": reply
-                                }
-                            )
-                        else:
-                            st.error("Mock interview returned blank output.")
-                    else:
-                        st.error(data)
-
-                    st.rerun()
-
-            else:
-                with st.spinner(f"Running {agents[key]['title']}..."):
-                    output = run_agent(
-                        key,
-                        resume,
-                        job_desc,
-                        company_info
-                    )
-                    st.session_state.outputs[key] = output
-
-st.divider()
-
-st.markdown("<div class='section-title'>3. Agent Results</div>", unsafe_allow_html=True)
-
-if len(st.session_state.outputs) == 0:
-    st.info("Run an agent to view results here.")
-
-for key, output in st.session_state.outputs.items():
-    with st.expander(agents[key]["title"], expanded=True):
-        st.markdown(output)
-
-if len(st.session_state.mock_messages) > 0:
-    st.divider()
-
-    st.markdown("<div class='section-title'>4. Mock Interview</div>", unsafe_allow_html=True)
-
-    for msg in st.session_state.mock_messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    user_answer = st.chat_input("Type your answer here...")
-
-    if user_answer:
-        st.session_state.mock_messages.append(
-            {
-                "role": "user",
-                "content": user_answer
-            }
-        )
-
-        payload = {
-            "resume": resume,
-            "job_desc": job_desc,
-            "company_info": company_info,
-            "messages": st.session_state.mock_messages
-        }
-
-        with st.spinner("Evaluating your answer..."):
-            success, data = safe_api_post("/mock-chat", payload)
-
-        if success:
-            reply = data.get("reply", "")
-            st.session_state.mock_messages.append(
-                {
-                    "role": "assistant",
-                    "content": reply
-                }
-            )
-        else:
-            st.session_state.mock_messages.append(
-                {
-                    "role": "assistant",
-                    "content": data
-                }
-            )
-
-        st.rerun()
-
-st.divider()
-
-st.markdown("<div class='section-title'>5. Final Preparation Report</div>", unsafe_allow_html=True)
-
-if st.button("Generate Final Report", disabled=len(st.session_state.outputs) == 0):
-    payload = {
+        "agent": agent_name,
         "resume": resume,
         "job_desc": job_desc,
         "company_info": company_info,
-        "outputs": st.session_state.outputs
+        "knowledge_text": knowledge_text,
     }
 
-    with st.spinner("Generating final report..."):
-        success, data = safe_api_post("/generate-report", payload)
+    data = safe_post("/run-agent", payload)
 
-    if success:
-        st.session_state.final_report = data.get("report", "")
+    if not data:
+        return None
+
+    if "result" not in data:
+        st.error("Backend did not return 'result'.")
+        st.code(str(data))
+        return None
+
+    return data["result"]
+
+
+def check_inputs(resume, job_desc):
+    if not resume.strip() or not job_desc.strip():
+        st.warning("Please enter both resume and job description.")
+        return False
+    return True
+
+
+with st.sidebar:
+    st.markdown("### ⚡ Knowledge Base")
+
+    kb_option = st.radio(
+        "Choose input type",
+        ["Type text", "Upload file"]
+    )
+
+    knowledge_text = ""
+
+    if kb_option == "Type text":
+        knowledge_text = st.text_area(
+            "Company notes / interview questions",
+            height=220,
+            placeholder="Paste company info, interview focus areas, or preparation notes..."
+        )
     else:
-        st.session_state.final_report = data
+        uploaded_kb = st.file_uploader(
+            "Upload knowledge file",
+            type=["txt", "pdf", "docx"]
+        )
 
-if st.session_state.final_report:
-    st.markdown(st.session_state.final_report)
+        if uploaded_kb:
+            knowledge_text = extract_text_from_file(uploaded_kb)
+            st.success("Knowledge base file loaded")
+
+    st.markdown("---")
+
+    completed = len(st.session_state.outputs)
+    total = 5
+    st.write(f"Sections completed: **{completed}/{total}**")
+    st.progress(completed / total)
+
+    if st.button("Clear Session"):
+        st.session_state.outputs = {}
+        st.session_state.chat_messages = []
+        st.rerun()
+
+
+st.markdown("""
+<div class="hero-header">
+    <div class="hero-badge">Agentic AI · RAG · Multi-Agent</div>
+    <h1 class="hero-title">AI <span>Interview</span> Preparation</h1>
+    <p class="hero-sub">
+        Analyze your resume, find skill gaps, generate targeted questions,
+        and run a mock interview using AI agents.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown('<div class="input-card"><div class="input-label">Resume</div>', unsafe_allow_html=True)
+
+    resume_mode = st.radio(
+        "Resume input mode",
+        ["Type text", "Upload file"],
+        key="resume_mode",
+        horizontal=True
+    )
+
+    if resume_mode == "Type text":
+        resume = st.text_area(
+            "Paste Resume",
+            height=220,
+            placeholder="Paste your resume here..."
+        )
+    else:
+        uploaded_resume = st.file_uploader(
+            "Upload Resume",
+            type=["txt", "pdf", "docx"],
+            key="resume_upload"
+        )
+        resume = extract_text_from_file(uploaded_resume) if uploaded_resume else ""
+        if uploaded_resume:
+            st.success("Resume loaded")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+with col2:
+    st.markdown('<div class="input-card"><div class="input-label">Job Description</div>', unsafe_allow_html=True)
+
+    jd_mode = st.radio(
+        "Job description input mode",
+        ["Type text", "Upload file"],
+        key="jd_mode",
+        horizontal=True
+    )
+
+    if jd_mode == "Type text":
+        job_desc = st.text_area(
+            "Paste Job Description",
+            height=220,
+            placeholder="Paste job description here..."
+        )
+    else:
+        uploaded_jd = st.file_uploader(
+            "Upload Job Description",
+            type=["txt", "pdf", "docx"],
+            key="jd_upload"
+        )
+        job_desc = extract_text_from_file(uploaded_jd) if uploaded_jd else ""
+        if uploaded_jd:
+            st.success("Job description loaded")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+st.markdown('<div class="input-card"><div class="input-label">Company Information</div>', unsafe_allow_html=True)
+
+company_mode = st.radio(
+    "Company information input mode",
+    ["Type text", "Upload file"],
+    key="company_mode",
+    horizontal=True
+)
+
+if company_mode == "Type text":
+    company_info = st.text_area(
+        "Company Information",
+        height=100,
+        placeholder="Paste company details here..."
+    )
+else:
+    uploaded_company = st.file_uploader(
+        "Upload Company Info",
+        type=["txt", "pdf", "docx"],
+        key="company_upload"
+    )
+    company_info = extract_text_from_file(uploaded_company) if uploaded_company else ""
+    if uploaded_company:
+        st.success("Company information loaded")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+
+tabs = st.tabs([
+    "📄 Resume Analyzer",
+    "📊 Skill Gap",
+    "🧠 Technical Questions",
+    "💬 HR Questions",
+    "🎤 Mock Interview",
+    "📑 Final Report"
+])
+
+
+with tabs[0]:
+    st.markdown('<div class="tab-heading">📄 Resume Analyzer</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-desc">Analyze resume alignment with the job description.</div>', unsafe_allow_html=True)
+
+    if st.button("Analyze Resume", key="btn_resume"):
+        if check_inputs(resume, job_desc):
+            with st.spinner("Analyzing resume..."):
+                result = run_agent("resume", resume, job_desc, company_info, knowledge_text)
+
+                if result:
+                    st.session_state.outputs["resume"] = result
+
+    if "resume" in st.session_state.outputs:
+        st.markdown(
+            f'<div class="result-card">{st.session_state.outputs["resume"]}</div>',
+            unsafe_allow_html=True
+        )
+
+
+with tabs[1]:
+    st.markdown('<div class="tab-heading">📊 Skill Gap Analyzer</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-desc">Find missing skills and preparation priorities.</div>', unsafe_allow_html=True)
+
+    if st.button("Analyze Skill Gaps", key="btn_skill"):
+        if check_inputs(resume, job_desc):
+            with st.spinner("Finding skill gaps..."):
+                result = run_agent("skill_gap", resume, job_desc, company_info, knowledge_text)
+
+                if result:
+                    st.session_state.outputs["skill_gap"] = result
+
+    if "skill_gap" in st.session_state.outputs:
+        st.markdown(
+            f'<div class="result-card">{st.session_state.outputs["skill_gap"]}</div>',
+            unsafe_allow_html=True
+        )
+
+
+with tabs[2]:
+    st.markdown('<div class="tab-heading">🧠 Technical Interview Questions</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-desc">Generate role-specific technical interview questions.</div>', unsafe_allow_html=True)
+
+    if st.button("Generate Technical Questions", key="btn_tech"):
+        if check_inputs(resume, job_desc):
+            with st.spinner("Generating technical questions..."):
+                result = run_agent("technical", resume, job_desc, company_info, knowledge_text)
+
+                if result:
+                    st.session_state.outputs["technical"] = result
+
+    if "technical" in st.session_state.outputs:
+        st.markdown(
+            f'<div class="result-card">{st.session_state.outputs["technical"]}</div>',
+            unsafe_allow_html=True
+        )
+
+
+with tabs[3]:
+    st.markdown('<div class="tab-heading">💬 HR Interview Questions</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-desc">Generate HR and behavioral interview questions.</div>', unsafe_allow_html=True)
+
+    if st.button("Generate HR Questions", key="btn_hr"):
+        if check_inputs(resume, job_desc):
+            with st.spinner("Generating HR questions..."):
+                result = run_agent("hr", resume, job_desc, company_info, knowledge_text)
+
+                if result:
+                    st.session_state.outputs["hr"] = result
+
+    if "hr" in st.session_state.outputs:
+        st.markdown(
+            f'<div class="result-card">{st.session_state.outputs["hr"]}</div>',
+            unsafe_allow_html=True
+        )
+
+
+with tabs[4]:
+    st.markdown('<div class="tab-heading">🎤 Mock Interview</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-desc">Chat with an AI interviewer.</div>', unsafe_allow_html=True)
+
+    for msg in st.session_state.chat_messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    user_message = st.chat_input("Type your answer...")
+
+    if user_message:
+        if check_inputs(resume, job_desc):
+            st.session_state.chat_messages.append(
+                {"role": "user", "content": user_message}
+            )
+
+            payload = {
+                "resume": resume,
+                "job_desc": job_desc,
+                "company_info": company_info,
+                "knowledge_text": knowledge_text,
+                "messages": st.session_state.chat_messages,
+            }
+
+            with st.spinner("Interviewer is thinking..."):
+                data = safe_post("/mock-chat", payload)
+
+            if data and "reply" in data:
+                st.session_state.chat_messages.append(
+                    {"role": "assistant", "content": data["reply"]}
+                )
+                st.rerun()
+
+
+with tabs[5]:
+    st.markdown('<div class="tab-heading">📑 Final Preparation Report</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-desc">Generate a complete interview preparation report.</div>', unsafe_allow_html=True)
+
+    if st.button("Generate Final Report", key="btn_report"):
+        if check_inputs(resume, job_desc):
+            payload = {
+                "resume": resume,
+                "job_desc": job_desc,
+                "company_info": company_info,
+                "knowledge_text": knowledge_text,
+                "outputs": st.session_state.outputs,
+            }
+
+            with st.spinner("Generating report..."):
+                data = safe_post("/generate-report", payload)
+
+            if data and "report" in data:
+                st.session_state.outputs["report"] = data["report"]
+
+    if "report" in st.session_state.outputs:
+        st.markdown(
+            f'<div class="result-card">{st.session_state.outputs["report"]}</div>',
+            unsafe_allow_html=True
+        )
