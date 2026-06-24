@@ -1,7 +1,7 @@
 import os
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,10 +21,6 @@ for file_name in os.listdir(KNOWLEDGE_DIR):
         loader = PyPDFLoader(file_path)
         documents.extend(loader.load())
 
-if not documents:
-    print("No documents found in knowledge_base folder.")
-    exit()
-
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=800,
     chunk_overlap=150
@@ -32,8 +28,8 @@ splitter = RecursiveCharacterTextSplitter(
 
 chunks = splitter.split_documents(documents)
 
-embeddings = OllamaEmbeddings(
-    model="nomic-embed-text"
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 vectordb = Chroma.from_documents(
