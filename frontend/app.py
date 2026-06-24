@@ -7,7 +7,7 @@ from docx import Document
 # API_URL = "http://127.0.0.1:8000"
 
 # For deployment, replace with your Render backend URL:
-API_URL = "https://your-render-backend-url.onrender.com"
+API_URL = "https://ai-assisted-interview-preparation-using.onrender.com"
 
 st.set_page_config(
     page_title="AI Interview Prep",
